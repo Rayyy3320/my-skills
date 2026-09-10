@@ -1,142 +1,71 @@
 ---
 name: project-governance
-description: Bootstrap, audit, or repair a doc-centric multi-agent collaboration governance structure for any software project. Use when starting a new project that multiple agents will work on, when adopting this method into an existing repo, or when structure drift is suspected (ownership conflicts, doc sprawl, test suite bloat, stale rules). One-time scaffolder + idempotent auditor; after a successful run the project is self-carrying and this skill is no longer needed by normal sessions.
+description: Audit, establish, or minimally repair repository governance when instructions, documentation, tests, ownership, handoffs, or workflow create demonstrated coordination cost, drift, or competing Authorities. Use for explicit governance work; not for project scaffolding, product architecture review, routine coding, or generic cleanup.
 ---
 
-# Project Governance Setup
+# Minimal Project Governance
 
-把多 agent 协作方法安装进一个项目。本 skill 是**建政工具**：项目启动/收编/体检时运行一次，
-产出常驻治理文档后退出。此后项目自携带，任何会话只依赖项目自身文档。
+Governance is justified only when it reduces the lifecycle cost of coordination, propagation, or high-cost failure.
 
-## 核心原则（不可妥协）
+## Scope and modes
 
-1. **目录树 = 所有权表的物理投影**。谁拥有哪个目录，表里一行、盘上一棵；冲突在开工前可视化。
-2. **对话间的共享内存只有两个：用户，与仓库文档。** 耐久知识必须落文档，不落在任何 agent 的记忆里。
-3. **文档分两层**：常读层（每会话自动注入或开工必读，承载规则+维护协议，严格行数预算）与
-   按需层（需求基线、契约、任务清单，按需读取）。不要把按需内容塞进常读层。
-4. **维护知识以"条件触发一行规则"安装进常读文档**——agent 每次启动反正要读它，顺手就维护了。
-   不为此新建独立维护文档（没人会读）。
-5. **场景中立**：本 skill 只定义通用范畴（所有权表、需求基线、数据契约、常读文档），
-   具体命名由 Step 2 检测或询问后实例化。不得预置任何单一项目的专有词汇。
+- **Audit** is read-only. Report evidence and the smallest correction; do not mutate.
+- **Establish or repair** may change only the governance artifacts or governance-specific checks the user placed in scope. Do not change product code.
+- Preserve project-specific choices. Do not impose fixed filenames, roles, plans, ownership maps, suite counts, or ceremonies.
 
-## 模式
+## Authority and lifecycle test
 
-- **bootstrap**（绿地）：无治理结构的项目，搭建完整骨架。
-- **audit**（体检）：已有结构的项目，diff 现状与理想骨架，报告缺口并补齐。幂等可重入。
-- **adopt**（收编）：把无结构的存量仓库最小移动迁入骨架。
+For every durable fact, keep one independently editable Authority close to the behavior it governs. Prefer, in order:
 
-执行流：检测 → 给出计划（含将创建/修改的文件清单）→ 用户确认 → 应用 → 输出治理地图。
+1. code, type, schema, config, or constraint;
+2. mechanical verification against that Authority;
+3. reliable derivation;
+4. persistent documentation only when rediscovery or misuse costs more than maintenance.
 
-## Step 1 · 检测
+Before adding a rule, document, role, handoff, state file, or check, establish:
 
-- 技术栈、构建方式、入口结构、现有测试套件数量与职责重叠度。
-- 现有常读文档（AGENTS.md / CLAUDE.md / .cursorrules / README——按项目实际）及其行数预算。
-- 自然的域分区：优先采用代码已经呈现的分区（按页面/按层/按特性），不发明新分区。
-- 只询问无法检测的事：域清单、命名偏好、是否有并行 agent 协作需求。
+- the demonstrated recurring or high-cost failure it prevents;
+- why a closer executable Authority or reliable derivation is insufficient;
+- the event and consumer that will read or run it;
+- its maintenance Authority and, when temporary, its retirement signal;
+- that its expected savings exceed its propagation and maintenance cost.
 
-## Step 2 · 理想骨架（域记为 D1..Dn，按检测结果实例化命名）
+Without this evidence, do not add the asset.
 
-```text
-<常读文档>                  治理规则+维护协议（≤80 行，增删必须替换而非追加）
-<所有权表文档>               域 → 独占写区（目录树与之一一镜像）
-workstreams/<Di>/TASKS.md   每域一份连续任务清单（勾选制，禁止另建 packet/claim/状态文档）
-contracts/                  跨域公共接口 + 页面可见数据事实契约（接缝唯一权威，改形状者更新）
-REQUIREMENTS_NEXT_vX.md     当前波次需求基线（产品语义+验收标准+OUT OF SCOPE，不到工程实现层）
-<视觉/体验单一来源文档>        若有 UI（本层只放长期方向与硬规则）
-<领域代码目录们>              与所有权表镜像
-tests/                      收敛套件（目标 ≤8 个）+ 文档治理检查（含 markdown 白名单与行数预算）
-```
+## Audit
 
-## Step 3 · 常读文档契约（写给 <常读文档>，全部为条件式一行规则）
+Start from the reported governance problem and inspect only its path from behavior to Authority, copies, consumers, and maintenance cost. Inspect a representative task end to end only when workflow or coordination friction is the claim being tested.
 
-1. **Worker loop**：首轮读相关 canonical 文档，后续只读 diff 与目标文件；完成一组连贯改动；
-   跑 focused 检查 + 改动 JS 语法；返回 `READY_FOR_REVIEW` / `ESCALATION_REQUIRED`（改动文件、
-   检查、可见证据、剩余风险）。
-2. **所有权与停止边界**：只写独占写区；跨域文件、公共契约/数据形状变更、产品决策、
-   与活跃 Worker 重叠 → 停止并报告精确文件与最小所需决定。
-3. **Worker 不做 Git 写入**；checkpoint 由 Coordinator 拥有。
-4. **子 agent 策略**：每波新开（知识在文档不在记忆）；同波返工按 session id 恢复原 agent；
-   跨波记忆由 Coordinator 回写文档。拆分粒度跟文件所有权走（按页面/域并行），不按工种；
-   共享 primitive 由 Coordinator 先行实现或以独立小任务串行完成，再并行各页面 agent。
-5. **维护协议**（每条 = 触发条件 + 同一交付内的动作，见 Step 4）。
-6. **反模式禁令**：不建 packet/claim/状态镜像/评审报告/规划文档；不跑无关全量套件。
+Look for:
 
-## Step 4 · 维护协议（安装进常读文档的条件触发规则）
+- competing Authorities, duplicated facts, or manual propagation;
+- stale guidance, completed work, or temporary state presented as current truth;
+- ownership and handoffs that do not prevent a demonstrated collision;
+- documents or checks without an actual reader or execution path;
+- flaky checks, or assertions over wording and implementation shape that protect no costly observable constraint;
+- governance that exists only to police other governance.
 
-| 触发（agent 正在做的事） | 同一交付内必须做的维护 |
-|---|---|
-| 改数据形状/字段 | 更新数据事实契约 + 递增持久化状态 schema 版本（旧快照作废） |
-| 改种子/fixture 数据 | 更新 seed 断言标记块（所有锁具体值的断言只活在这一个块里） |
-| 改共享表面（API/组件/契约） | 交付附接线清单：该表面全部运行时调用点 + 每处归属 |
-| 增删域或目录 | 更新所有权表 + 对应 TASKS.md 集合 |
-| 套件失败因断言锁死具体事实 | 判定是断言过时还是实现错误；过时则改断言并回归到"只锁不变量" |
-| 文档超预算 | 精炼/替换/删除死规则，禁止只增不减 |
-| 波次结束 | 经验折叠成一行规则写入常读文档；删除已作废段落；验收套件随波退役，不变量折叠进活套件 |
-| 新增/修改共享 primitive | Coordinator 当波人工快审：转义完整性、确定性、经典 script 兼容、无全局泄漏 |
+Stop when the root cause and smallest safe correction are supported. Classify each finding as **keep**, **change**, or **remove** using concrete file or behavior evidence.
 
-## Step 5 · 测试治理
+## Minimum repair
 
-- 每套件一个职责（平台硬约束 / 数据契约 / 路由与 Shell / UI 体系 / 页面行为 / 文档治理）。
-- 波次的验收测试随波退役；只有"活着的不变量"进永久套件；套件数量只减不增（除非新域）。
-- 测试锁不变量（必须存在的 action、禁止出现的概念、确定性、scoping 语义），不锁文案措辞。
+Repair in this order:
 
-## Step 6 · 治理地图（交付物）
+1. delete stale, duplicated, or reliably derivable representations;
+2. select the closest Authority and replace copies with derivation, verification, or links;
+3. remove unnecessary propagation, ownership state, and handoffs;
+4. add a Boundary only when its reduction in propagation or reversal cost exceeds its lifecycle cost;
+5. add persistent prose or checks only when the lifecycle test passes.
 
-一页输出：`文档/目录 → owner → 谁在什么时候读`，外加套件清单与维护协议行数。
-用户扫一眼即可验收搭建质量。
+Locality has degraded when an ordinary change must update unusually many governance surfaces, rediscover the same fact, reconcile competing Authorities, or understand unrelated process. Restore locality only as far as needed; prefer deletion and consolidation over abstraction.
 
----
+## Documentation and checks
 
-## 附录 A · 派发模板（Coordinator → Worker）
+- Active guidance contains only durable, current decisions that executable sources cannot express. Git holds history.
+- Tests protect observable behavior or costly constraints. Test implementation shape only when that shape is itself an external, security, compatibility, or operational constraint.
+- Diagnose flaky checks; fix, quarantine, or remove them instead of rerunning until green.
+- Add a governance checker only for demonstrated recurring drift, only for mechanical facts, and only when it runs in the workflow that maintains those facts.
 
-```text
-你是 <域> 线程的 <角色>，在 <repo> 工作（<项目形态一句话：静态/构建/禁用项>）。
-必读：<常读文档>、<所有权表>、<你的 TASKS.md>、<需求基线 §n>、<契约文件>
-独占写区：<精确路径白名单>；禁止：<禁区路径 + Git/浏览器/新文档等禁令>
-任务：<引用需求编号与节号，不复述产品语义> + 执行顺序 + 接缝约定（真实值优先，兜底值兜底）
-验证：<focused 套件清单> + 全量套件 + 语法检查
-返回：READY_FOR_REVIEW / ESCALATION_REQUIRED（改动文件、要点、接缝点、测试结果、
-浏览器验收点清单[改可见 UI 时]、剩余风险）
-任务类型标注：<设计/调试/常规>（供按次配置推理等级：默认高，设计与调试拉满）
-```
+## Result
 
-派发纪律：不复述产品语义（引用需求编号与节号，歧义以需求基线为唯一仲裁）；
-数据字段形状引用数据事实契约文件，不手抄快照。
-
-**可选组合**：需要第二模型只读评审、疑难升级或设计预审时，加载 advisor-review skill
-（与本 skill 正交，单独开关，仓库不留痕迹）。
-
-## 附录 B · 交付模板（Worker → Coordinator）
-
-改动文件清单 / 各任务要点 / 与契约的接缝点（用了哪些兜底值）/ 测试结果 /
-接线清单（改共享形状时必填：调用点 + 归属）/ 浏览器验收点清单 / 剩余风险。
-
-## 附录 C · 验收流程（断言分层 + 脚本化采集 + 截屏外移判定）
-
-**判定通道分层**：结构事实（元素存在、关键文案、色值/字重、列数/溢出、断点）走脚本断言，
-输出文本 PASS/FAIL，不进视觉通道且逐波沉淀为回归资产；只有视觉质量判断（间距/层次/
-对齐/气质）才消耗视觉通道。
-
-**默认路径（波次验收）**：Worker 交付验收点清单（模板强制四类覆盖：布局/文案/交互状态/
-窄屏；Coordinator 接单时快速扫一遍补漏）→ judge subagent 执行：跑截图清单脚本采集落盘
-（支持点击/输入等交互后状态）→ 跑结构断言脚本 → Read 落盘图片做视觉判定 → 返回逐项
-verdict + 证据。不设专门的采集线程；采集是机械动作，由 judge 顺手执行。
-
-**Coordinator 的浏览器使用按成本判据，不设禁令**：批量化验收走脚本路径；脚本开发调试、
-清单外一次性交互状态、开发期随手 spot-check、不值得走全套流程的小改动，可直接开浏览器。
-人眼保留项（Read 落盘图或开浏览器均可，按当时成本选）：每波 1-2 张 hero 屏、judge 判
-fail 项、共享 primitive 相关页面。
-
-**delta 复判**：修复后只重采重判 fail 项，不重跑全清单。低风险改动抽样验收；
-非可见改动不进任何视觉通道。
-
-## 附录 D · 上下文边界备忘
-
-- 侧边对话：继承创建时刻的快照，之后与主对话互相隔离；结论必须经用户回传或落文档；
-  依赖最新仓库状态时重读文件，不信任继承记忆。
-- 子 agent：单次任务、只返回最终报告；主线程不做子 agent 已委派的事。完成态 agent
-  空闲零成本、可按 session id 原地恢复（同波返工用），存活期绑定父会话——因此不依赖
-  agent 记忆做任何长期存储，也不建清理机制；不把 agent id 写进仓库文档。
-- 子 agent 并行度受模型供应商订阅的并发配额约束（撞限表现为请求 429 失败）；
-  按并行上限做批次化派发，或用 advisor 模式把第三路让给异构供应商。
-- 语义歧义仲裁顺序：需求基线 > 契约文件 > 常读文档规则 > 任何对话记忆。
+Return the root cause, current or proposed Authority, **keep / change / remove** decisions, the smallest ordered correction, verification, and remaining material risk. Do not create a report file unless requested. If current governance is cheaper than the failure it prevents, recommend no change.
